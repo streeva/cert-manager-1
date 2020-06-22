@@ -7,8 +7,8 @@ import (
 
 	cmacme "github.com/jetstack/cert-manager/pkg/apis/acme/v1alpha2"
 	logf "github.com/jetstack/cert-manager/pkg/logs"
-	istioapinetworking "istio.io/api/networking/v1beta1"
-	istioclientnetworking "istio.io/client-go/pkg/apis/networking/v1beta1"
+	istioapinetworking "istio.io/api/networking/v1alpha3"
+	istioclientnetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -48,14 +48,14 @@ func (s *Solver) ensureIstio(ctx context.Context, ch *cmacme.Challenge, svcName 
 
 func (s *Solver) getGateway(ctx context.Context, ch *cmacme.Challenge) (*istioclientnetworking.Gateway, error) {
 	http01Istio := ch.Spec.Solver.HTTP01.Istio
-	return s.IstioClient.NetworkingV1beta1().Gateways(http01Istio.GatewayNamespace).
+	return s.IstioClient.NetworkingV1alpha3().Gateways(http01Istio.GatewayNamespace).
 		Get(ctx, http01Istio.GatewayName, metav1.GetOptions{})
 }
 
 func (s *Solver) getVirtualService(ctx context.Context, ch *cmacme.Challenge) (*istioclientnetworking.VirtualService, error) {
 	http01Istio := ch.Spec.Solver.HTTP01.Istio
 	selector := labels.Set(podLabels(ch)).AsSelector()
-	vsList, err := s.IstioClient.NetworkingV1beta1().VirtualServices(http01Istio.GatewayNamespace).
+	vsList, err := s.IstioClient.NetworkingV1alpha3().VirtualServices(http01Istio.GatewayNamespace).
 		List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (s *Solver) createVirtualService(ctx context.Context, ch *cmacme.Challenge,
 		},
 		Spec: createVirtualServiceSpec(ch, svcName, gateway),
 	}
-	return s.IstioClient.NetworkingV1beta1().VirtualServices(vs.Namespace).Create(ctx, vs, metav1.CreateOptions{})
+	return s.IstioClient.NetworkingV1alpha3().VirtualServices(vs.Namespace).Create(ctx, vs, metav1.CreateOptions{})
 }
 
 func (s *Solver) checkAndUpdateVirtualService(ctx context.Context, ch *cmacme.Challenge, svcName string, gateway *istioclientnetworking.Gateway, virtualservice *istioclientnetworking.VirtualService) (*istioclientnetworking.VirtualService, error) {
@@ -97,7 +97,7 @@ func (s *Solver) checkAndUpdateVirtualService(ctx context.Context, ch *cmacme.Ch
 
 	if needsUpdate {
 		logf.WithRelatedResource(log, virtualservice).Info("Updating VirtualService")
-		return s.IstioClient.NetworkingV1beta1().VirtualServices(virtualservice.Namespace).Update(ctx, virtualservice, metav1.UpdateOptions{})
+		return s.IstioClient.NetworkingV1alpha3().VirtualServices(virtualservice.Namespace).Update(ctx, virtualservice, metav1.UpdateOptions{})
 	}
 
 	return virtualservice, nil
